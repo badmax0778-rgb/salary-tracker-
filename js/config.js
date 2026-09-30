@@ -2,8 +2,8 @@
 // CONFIG.JS — App-wide constants: Supabase, rates, user credentials
 // ============================================================================
 
-const DEFAULT_SUPABASE_URL = 'https://sjhfbxgtctmaauodtges.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqaGZieGd0Y3RtYWF1b2R0Z2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3NjkyNzAsImV4cCI6MjEwNjM0NTI3MH0.MKLihbQl5atQ9t2YB_6TER1x2g0M-BZezH39lahlHCw';
+const DEFAULT_SUPABASE_URL = window.ENV?.SUPABASE_URL || '';
+const DEFAULT_SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY || '';
 
 // Rate tiers: <3 lines = RATE_LOW, >=3 lines = RATE_HIGH
 const RATE_LOW  = 2500;  // ₹2,500 per line (1–2 lines)
