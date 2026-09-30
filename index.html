@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ProTrack &bull; Production Tracker &amp; Manager Executive Portal</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- SheetJS for Excel (.xlsx) export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Supabase JS Client v2 — NOTE: loads window.supabase globally. DO NOT use 'let supabase' anywhere in app code -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Tailwind Config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col pb-safe md:pb-8">
+
+  <!-- ==================== TOP NAVIGATION & AUTH HEADER ==================== -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-6xl mx-auto px-3 sm:px-4 h-16 flex items-center justify-between">
+      <!-- Logo + Brand -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-md shadow-brand-500/20 shrink-0">
+          <i data-lucide="layers" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h1 class="text-sm sm:text-base font-extrabold text-slate-900 leading-tight">ProTrack</h1>
+            <span id="roleBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200">Guest</span>
+          </div>
+          <p class="text-[11px] text-slate-400 font-medium hidden sm:block">Production Floor &amp; Wage Management</p>
+        </div>
+      </div>
+
+      <!-- Desktop Tab Nav — tabs start hidden, shown after login by applyRoleUI() -->
+      <nav class="hidden md:flex items-center bg-slate-100 p-1 rounded-xl gap-1">
+        <button onclick="switchTab('login')" id="navTab-login" class="tab-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-indigo-600"></i> Login
+        </button>
+        <button onclick="switchTab('entry')"   id="navTab-entry"   class="tab-btn hidden px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
+          <i data-lucide="file-plus-2" class="w-3.5 h-3.5"></i> Daily Entry
+        </button>
+        <button onclick="switchTab('records')" id="navTab-records" class="tab-btn hidden px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
+          <i data-lucide="calendar" class="w-3.5 h-3.5"></i> Records
+        </button>
+        <button onclick="switchTab('manager')" id="navTab-manager" class="tab-btn hidden px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
+          <i data-lucide="briefcase" class="w-3.5 h-3.5 text-indigo-600"></i> Dashboard
+        </button>
+        <button onclick="switchTab('reports')" id="navTab-reports" class="tab-btn hidden px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
+          <i data-lucide="wallet" class="w-3.5 h-3.5"></i> Salary
+        </button>
+        <button onclick="switchTab('members')" id="navTab-members" class="tab-btn hidden px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
+          <i data-lucide="users" class="w-3.5 h-3.5"></i> Team
+        </button>
+      </nav>
+
+      <!-- Right: user name + auth btn + db status -->
+      <div class="flex items-center gap-2">
+        <span id="headerUserDisplay" class="hidden sm:inline-block text-xs font-semibold text-slate-500 max-w-[120px] truncate"></span>
+        <button id="authBtn" onclick="handleAuthAction()"
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition shadow-2xs">
+          <i data-lucide="lock" class="w-3.5 h-3.5" id="authIcon"></i>
+          <span id="authLabel">Login</span>
+        </button>
+        <button onclick="openSupabaseModal()" title="Database Settings"
+          class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 transition">
+          <span id="supabaseStatusDot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span id="supabaseStatusText">Supabase</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== TOTAL TEAM PAYMENT SUMMARY RIBBON ==================== -->
+  <section id="ribbonSection" class="max-w-6xl w-full mx-auto px-3 sm:px-6 pt-3">
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-3.5 sm:p-4 shadow-sm border border-slate-800">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+            <i data-lucide="banknote" class="w-3.5 h-3.5 text-amber-400"></i> Total Team Payment Dashboard
+          </span>
+          <h2 class="text-xs text-slate-300 mt-0.5">Live aggregated production earnings &amp; equal split tracker</h2>
+        </div>
+        <div class="grid grid-cols-3 gap-2 sm:gap-6">
+          <div class="bg-slate-800/60 p-2 sm:p-2.5 rounded-xl border border-slate-700/60 text-center sm:text-left">
+            <span class="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 block">Today's Team Pay</span>
+            <span class="text-sm sm:text-lg font-extrabold text-amber-300 tracking-tight" id="ribbonTodayPay">₹0</span>
+          </div>
+          <div class="bg-slate-800/60 p-2 sm:p-2.5 rounded-xl border border-slate-700/60 text-center sm:text-left">
+            <span class="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 block">This Month's Pay</span>
+            <span class="text-sm sm:text-lg font-extrabold text-emerald-400 tracking-tight" id="ribbonMonthPay">₹0</span>
+          </div>
+          <div class="bg-slate-800/60 p-2 sm:p-2.5 rounded-xl border border-slate-700/60 text-center sm:text-left">
+            <span class="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 block">All-Time Total</span>
+            <span class="text-sm sm:text-lg font-extrabold text-white tracking-tight" id="ribbonAllTimePay">₹0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== MAIN CONTENT TABS ==================== -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 space-y-6">
+
+    <!-- TAB 0: LOGIN PORTAL -->
+    <!-- TAB 0: LOGIN PORTAL — 3 Role Cards → Credential Step -->
+    <section id="view-login" class="tab-view animate-fade-in">
+      <div class="min-h-[80vh] flex items-center justify-center py-6 px-2">
+        <div class="w-full max-w-3xl space-y-6">
+
+          <!-- Header -->
+          <div class="text-center space-y-2">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-700 via-indigo-600 to-indigo-500 text-white shadow-xl shadow-indigo-500/30 mb-1">
+              <i data-lucide="layers" class="w-8 h-8"></i>
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Welcome to ProTrack</h2>
+            <p class="text-sm text-slate-500 max-w-sm mx-auto">Production Floor &amp; Wage Management System.<br>Please select your role to continue.</p>
+          </div>
+
+          <!-- STEP 1: Role Selection Cards -->
+          <div id="loginRoleStep" class="space-y-4">
+            <p class="text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Select Your Role</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+              <!-- ADMIN Card -->
+              <button type="button" onclick="selectLoginRole('admin')" id="roleCard-admin"
+                class="group p-5 bg-white border-2 border-rose-200 rounded-2xl shadow-sm hover:border-rose-500 hover:shadow-md transition-all text-left space-y-3 focus:outline-none focus:ring-2 focus:ring-rose-400">
+                <div class="flex items-center justify-between">
+                  <span class="w-11 h-11 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center text-xl font-black">🔑</span>
+                  <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 tracking-wider">Full Access</span>
+                </div>
+                <div>
+                  <h3 class="text-sm font-extrabold text-slate-900">Admin</h3>
+                  <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Full system control — add, edit, delete records, manage team members, configure database</p>
+                </div>
+                <div class="space-y-1 pt-1 border-t border-slate-100">
+                  <div class="flex items-center gap-1.5 text-[10px] text-slate-500"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> Edit &amp; Delete records</div>
+                  <div class="flex items-center gap-1.5 text-[10px] text-slate-500"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> Manage team members</div>
+                  <div class="flex items-center gap-1.5 text-[10px] text-slate-500"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> All tabs &amp; reports</div>
+                </div>
+                <div class="w-full py-2 rounded-xl bg-rose-600 group-hover:bg-rose-700 text-white text-[11px] font-extrabold text-center transition">
+                  Login as Admin →
+                </div>
+              </button>
+
+              <!-- MANAGER Card -->
+              <button type="button" onclick="selectLoginRole('manager')" id="roleCard-manager"
+                class="group p-5 bg-white border-2 border-indigo-200 rounded-2xl shadow-sm hover:border-indigo-500 hover:shadow-md transition-all text-left space-y-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                <div class="flex items-center justify-between">
+                  <span class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl font-black">👔</span>
+                  <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 tracking-wider">Analytics</span>
+                </div>
+                <div>
+                  <h3 class="text-sm font-extrabold text-slate-900">Manager</h3>
+                  <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Executive dashboard — view floor analytics, team productivity, export salary reports</p>
+                </div>
+                <div class="space-y-1 pt-1 border-t border-slate-100">
+                  <div class="flex items-center gap-1.5 text-[10px] text-slate-500"><span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span> Executive Dashboard</div>
+                  <div class="flex items-center gap-1.5 text-[10px] text-slate-500"><span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span> Member salary reports</div>
+                  <div class="flex items-center gap-1.5 text-[10px] text-slate-500"><span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span> Export Excel &amp; WhatsApp</div>
+                </div>
+                <div class="w-full py-2 rounded-xl bg-indigo-600 group-hover:bg-indigo-700 text-white text-[11px] font-extrabold text-center transition">
+                  Login as Manager →
+                </div>
+              </button>
+
+              <!-- OPERATOR Card -->
+              <button type="button" onclick="selectLoginRole('operator')" id="roleCard-operator"
+                class="group p-5 bg-white border-2 border-slate-200 rounded-2xl shadow-sm hover:border-slate-500 hover:shadow-md transition-all text-left space-y-3 focus:outline-none focus:ring-2 focus:ring-slate-400">
+                <div class="flex items-center justify-between">
+                  <span class="w-11 h-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-xl font-black">👷</span>
+                  <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 tracking-wider">No Password</span>
+                </div>
+                <div>
+                  <h3 class="text-sm font-extrabold text-slate-900">Floor Operator</h3>
+                  <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Daily production entry — log completed lines, tick team members, record shift output</p>
+                </div>
+                <div class="space-y-1 pt-1 border-t border-slate-100">
+                  <div class="flex items-center gap-1.5 text-[10px] text-slate-500"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Daily work entry form</div>
+                  <div class="flex items-center gap-1.5 text-[10px] text-slate-500"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> View own records</div>
+                  <div class="flex items-center gap-1.5 text-[10px] text-slate-500"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> No PIN required</div>
+                </div>
+                <div class="w-full py-2 rounded-xl bg-slate-800 group-hover:bg-slate-900 text-white text-[11px] font-extrabold text-center transition">
+                  Continue as Operator →
+                </div>
+              </button>
+
+            </div>
+
+            <!-- Info bar -->
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-2 text-[11px] text-slate-500">
+              <i data-lucide="info" class="w-4 h-4 shrink-0 text-slate-400"></i>
+              <span>Admins can change credentials via Settings. Default: Admin PIN <strong class="text-rose-600">1234</strong> · Manager <strong class="text-indigo-600">manager / manager123</strong></span>
+            </div>
+          </div>
+
+          <!-- STEP 2: Credential Entry (shown after role card click) -->
+          <div id="loginCredentialStep" class="hidden max-w-sm mx-auto space-y-4">
+            <div class="flex items-center gap-3">
+              <button onclick="backToRoleSelect()" class="p-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+              </button>
+              <h3 class="text-base font-extrabold text-slate-900" id="loginRoleTitle">Login</h3>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+              <form onsubmit="handleLoginFormSubmit(event)" id="loginCredForm" class="space-y-3.5">
+                <!-- Dynamically rendered by selectLoginRole() -->
+              </form>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 1: DAILY WORK ENTRY -->
+    <section id="view-entry" class="tab-view hidden space-y-5 animate-fade-in">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Left: Form -->
+        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <i data-lucide="file-plus-2" class="w-4 h-4 text-brand-600"></i> Daily Production Work Entry
+              </h2>
+              <p class="text-xs text-slate-500">Tick team members (1, 2, 3 or 4), add lines, split salary equally</p>
+            </div>
+            <button type="button" onclick="openMemberModal()" class="px-2.5 py-1 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold transition flex items-center gap-1">
+              <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> + New Member
+            </button>
+          </div>
+
+          <form id="entryForm" onsubmit="handleSaveEntry(event)" class="space-y-4">
+
+            <!-- Date -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label for="entryDate" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Production Date</label>
+                <div class="flex gap-1">
+                  <button type="button" onclick="setDatePreset(0)" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700">Today</button>
+                  <button type="button" onclick="setDatePreset(-1)" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700">Yesterday</button>
+                </div>
+              </div>
+              <input type="date" id="entryDate" required
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+            </div>
+
+            <!-- Team Members Checklist -->
+            <div class="p-3.5 bg-brand-50/70 rounded-xl border border-brand-200 space-y-2.5">
+              <div class="flex items-center justify-between">
+                <div>
+                  <label class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <i data-lucide="users" class="w-4 h-4 text-brand-600"></i>
+                    Tick Working Team Members <span class="text-rose-500">*</span>
+                  </label>
+                  <p class="text-[11px] text-slate-500">Select all persons who worked together on this shift (e.g. 2, 3, or 4 members)</p>
+                </div>
+                <span id="selectedTeamBadge" class="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-brand-600 text-white shadow-2xs">0 Members</span>
+              </div>
+              <div id="teamMembersChecklist" class="grid grid-cols-2 sm:grid-cols-2 gap-2 pt-1"></div>
+              <div id="teamSplitNotice" class="p-2.5 bg-white rounded-lg border border-brand-200 text-xs text-brand-900 hidden flex items-center justify-between">
+                <span class="font-semibold" id="teamSplitText">Selected 2 members: Salary will be divided equally (50% each)</span>
+                <span class="font-extrabold text-emerald-700" id="teamSplitPerPersonPreview">₹0 / person</span>
+              </div>
+            </div>
+
+            <!-- Production Lines -->
+            <div class="space-y-3 pt-2">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Production Lines Worked</h3>
+                  <p class="text-[11px] text-slate-400">Click &quot;+ Add Line&quot; to add Line #1, Line #2, Line #3...</p>
+                </div>
+                <button type="button" onclick="addNewLine()"
+                  class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i> + Add Line
+                </button>
+              </div>
+              <div id="linesList" class="space-y-2.5"></div>
+            </div>
+
+            <!-- Rate Override -->
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" id="overrideRateCheck" onchange="toggleRateOverride()"
+                    class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                  <span class="text-xs font-bold text-slate-700">Manual Rate Override</span>
+                </label>
+                <span class="text-[11px] text-slate-500">Standard: 1-2 lines = ₹2,500 | 3+ lines = ₹3,000</span>
+              </div>
+              <div id="customRateRow" class="hidden pt-2 border-t border-slate-200 flex items-center gap-2">
+                <div class="relative w-40">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                  <input type="number" id="customRateValue" min="0" step="50" placeholder="e.g. 3500" oninput="updateCalculations()"
+                    class="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <span class="text-[11px] text-slate-500">Custom rate applied per line for this entry</span>
+              </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="pt-2 flex items-center gap-2.5">
+              <button type="button" onclick="resetEntryForm()" class="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-600 transition">Clear</button>
+              <button type="submit" id="saveEntryBtn"
+                class="flex-1 py-3 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md shadow-brand-500/25 flex items-center justify-center gap-2 transition active:scale-[0.98]">
+                <i data-lucide="check" class="w-4 h-4"></i>
+                <span id="saveBtnLabel">Save &amp; Record Payment Split</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Right: Live Wage Split Preview -->
+        <div class="lg:col-span-5 space-y-4 lg:sticky lg:top-20">
+          <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl shadow-xl p-5 border border-slate-700 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-700/80">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <i data-lucide="calculator" class="w-3.5 h-3.5 text-amber-400"></i> Equal Wage Split Calculation
+              </span>
+              <span id="tierBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Tier 1 (₹2,500/line)</span>
+            </div>
+
+            <div>
+              <span class="text-xs text-slate-400 font-medium">Total Shift Salary (All Lines)</span>
+              <div class="text-4xl sm:text-5xl font-extrabold text-white mt-1 tracking-tight" id="previewPayable">₹2,500</div>
+              <div class="text-xs text-slate-400 mt-1" id="previewFormula">1 line &times; ₹2,500 / line</div>
+            </div>
+
+            <div class="p-3.5 bg-emerald-950/60 rounded-xl border border-emerald-500/40 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Each Member's Share</span>
+                <span class="text-xs font-semibold text-emerald-200" id="previewTeamCount">1 Member (100%)</span>
+              </div>
+              <div class="text-2xl sm:text-3xl font-black text-emerald-400" id="previewPerPersonAmount">₹2,500 / person</div>
+              <div class="text-[11px] text-slate-300" id="previewSplitFormula">₹2,500 ÷ 1 member = ₹2,500 each</div>
+            </div>
+
+            <div class="space-y-1.5 pt-1" id="previewIndividualShares"></div>
+
+            <div class="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-700/80 text-xs">
+              <div class="bg-slate-800/70 p-2.5 rounded-xl border border-slate-700/50">
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Line Rate</span>
+                <span class="text-base font-bold text-slate-100" id="previewRate">₹2,500</span>
+                <span class="text-[10px] text-slate-400 block" id="previewRateTier">Tier 1 Rate</span>
+              </div>
+              <div class="bg-slate-800/70 p-2.5 rounded-xl border border-slate-700/50">
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Total Meters</span>
+                <span class="text-base font-bold text-slate-100" id="previewMeters">0 m</span>
+                <span class="text-[10px] text-slate-400 block">Across all lines</span>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-700/80 space-y-1.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-300 font-semibold">Line Status</span>
+                <span class="text-emerald-400 font-bold" id="previewDonePct">100% Done</span>
+              </div>
+              <div class="h-2 w-full bg-slate-700 rounded-full overflow-hidden flex">
+                <div id="barDone"    class="bg-emerald-500 h-full transition-all duration-300" style="width: 100%"></div>
+                <div id="barPending" class="bg-amber-400 h-full transition-all duration-300" style="width: 0%"></div>
+                <div id="barFailed"  class="bg-rose-500 h-full transition-all duration-300" style="width: 0%"></div>
+              </div>
+              <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> <span id="countDone">1</span> Done</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> <span id="countPending">0</span> Pending</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> <span id="countFailed">0</span> Failed</span>
+              </div>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-indigo-950/80 border border-indigo-800/40 text-[11px] text-indigo-200">
+              💡 <strong>Example:</strong> If 2 members complete 3 lines: Total is 3 &times; ₹3,000 = ₹9,000. Each member receives <strong>₹4,500</strong>!
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 2: RECORDS LOG -->
+    <section id="view-records" class="tab-view hidden space-y-4 animate-fade-in">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="table" class="w-4 h-4 text-brand-600"></i> Production Work Records &amp; Status
+            </h2>
+            <p class="text-xs text-slate-500">View team entries, equal split per member, and tap status pills to toggle Done/Pending</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="exportToExcel()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs">
+              <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> Export Excel
+            </button>
+            <button onclick="fetchEntries()" class="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition" title="Refresh records">
+              <i data-lucide="refresh-cw" class="w-4 h-4" id="recordsRefreshSpinner"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-3">
+          <div class="sm:col-span-8 relative">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="recordsSearch" oninput="handleRecordsFilter()" placeholder="Search member name or line code (e.g. Line #2)..."
+              class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+          <div class="sm:col-span-4">
+            <select id="recordsStatusFilter" onchange="handleRecordsFilter()"
+              class="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="All">All Statuses</option>
+              <option value="Done">Has Done Lines</option>
+              <option value="Pending">Has Pending Lines</option>
+              <option value="Failed">Has Failed Lines</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <div id="recordsCardsMobile" class="md:hidden space-y-3"></div>
+          <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th class="py-2.5 px-3 w-8"></th>
+                  <th class="py-2.5 px-3">Date</th>
+                  <th class="py-2.5 px-3">Working Team Members</th>
+                  <th class="py-2.5 px-3 text-center">Lines</th>
+                  <th class="py-2.5 px-3 text-right">Rate / Line</th>
+                  <th class="py-2.5 px-3 text-right">Total Shift (₹)</th>
+                  <th class="py-2.5 px-3 text-right">Split Share / Person</th>
+                  <th class="py-2.5 px-3">Status</th>
+                  <th class="py-2.5 px-3 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="recordsTableBody" class="divide-y divide-slate-100 text-xs font-medium"></tbody>
+            </table>
+          </div>
+          <div id="recordsEmpty" class="hidden text-center py-12">
+            <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+              <i data-lucide="inbox" class="w-6 h-6"></i>
+            </div>
+            <p class="text-xs font-bold text-slate-600">No records found matching your filters</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: MANAGER EXECUTIVE DASHBOARD -->
+    <section id="view-manager" class="tab-view hidden space-y-5 animate-fade-in">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">
+                <i data-lucide="briefcase" class="w-4 h-4"></i>
+              </div>
+              <h2 class="text-base font-bold text-slate-900">Manager Production Executive Portal</h2>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">Comprehensive audit of what lines operated, completed vs pending work, and active team output</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="exportManagerReportExcel()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs">
+              <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> Export Floor Audit (.xlsx)
+            </button>
+            <button onclick="shareManagerBriefingWhatsApp()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs">
+              <i data-lucide="send" class="w-3.5 h-3.5"></i> Manager WhatsApp Summary
+            </button>
+          </div>
+        </div>
+
+        <!-- Manager Filters -->
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+            <div class="sm:col-span-3">
+              <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Date</label>
+              <input type="date" id="mgrFromDate" onchange="runManagerAnalytics()"
+                class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800">
+            </div>
+            <div class="sm:col-span-3">
+              <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">To Date</label>
+              <input type="date" id="mgrToDate" onchange="runManagerAnalytics()"
+                class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800">
+            </div>
+            <div class="sm:col-span-3">
+              <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Work Status Filter</label>
+              <select id="mgrWorkStatus" onchange="runManagerAnalytics()"
+                class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800">
+                <option value="ALL">All Work (Done + Pending)</option>
+                <option value="DONE_ONLY">Finished / Completed Work Only</option>
+                <option value="PENDING_ONLY">Pending / In-Progress Work Only</option>
+              </select>
+            </div>
+            <div class="sm:col-span-3 flex gap-1">
+              <button onclick="setManagerPreset('today')"     class="flex-1 py-1.5 px-2 bg-white hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition">Today</button>
+              <button onclick="setManagerPreset('thisMonth')" class="flex-1 py-1.5 px-2 bg-white hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition">This Month</button>
+              <button onclick="setManagerPreset('last30')"    class="flex-1 py-1.5 px-2 bg-white hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition">Last 30D</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="bg-gradient-to-br from-indigo-50 to-brand-50 rounded-xl p-3.5 border border-indigo-100">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">Total Lines Operated</span>
+            <div class="text-xl sm:text-2xl font-extrabold text-indigo-950 mt-0.5" id="mgrTotalLines">0</div>
+            <div class="text-[10px] font-semibold text-indigo-600 mt-0.5" id="mgrLinesStatusRatio">0 Done &bull; 0 Pending</div>
+          </div>
+          <div class="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-3.5 border border-emerald-100">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Total Production Output</span>
+            <div class="text-xl sm:text-2xl font-extrabold text-emerald-950 mt-0.5" id="mgrTotalMeters">0 m</div>
+            <span class="text-[10px] font-semibold text-emerald-600 mt-0.5 block" id="mgrAvgMetersPerLine">0 m / line average</span>
+          </div>
+          <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-3.5 border border-amber-100">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">Floor Work Completion</span>
+            <div class="text-xl sm:text-2xl font-extrabold text-amber-950 mt-0.5" id="mgrDonePct">0%</div>
+            <span class="text-[10px] font-semibold text-amber-600 mt-0.5 block" id="mgrPendingCountAlert">0 lines pending</span>
+          </div>
+          <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-3.5 border border-purple-100">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-purple-700 block">Total Production Cost</span>
+            <div class="text-xl sm:text-2xl font-extrabold text-purple-950 mt-0.5" id="mgrTotalCost">₹0</div>
+            <span class="text-[10px] font-semibold text-purple-600 mt-0.5 block" id="mgrTotalShiftsCount">0 shifts logged</span>
+          </div>
+        </div>
+
+        <!-- Team Productivity -->
+        <div class="space-y-3 pt-2">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="users" class="w-3.5 h-3.5 text-brand-600"></i> Active Team Productivity (Lines Operated Per Team)
+            </h3>
+            <span class="text-[11px] text-slate-400">Team output comparison</span>
+          </div>
+          <div id="mgrTeamCardsMobile" class="md:hidden space-y-2.5"></div>
+          <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th class="py-2 px-3">Working Team Combination</th>
+                  <th class="py-2 px-3 text-center">Team Size</th>
+                  <th class="py-2 px-3 text-center">Total Shifts</th>
+                  <th class="py-2 px-3 text-center">Lines Completed</th>
+                  <th class="py-2 px-3 text-center">Avg Lines / Shift</th>
+                  <th class="py-2 px-3 text-right">Total Meters</th>
+                  <th class="py-2 px-3 text-right">Team Wages (₹)</th>
+                  <th class="py-2 px-3 text-right">Share / Member</th>
+                </tr>
+              </thead>
+              <tbody id="mgrTeamTableBody" class="divide-y divide-slate-100 text-xs font-medium"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Line-by-Line Audit -->
+        <div class="space-y-3 pt-4 border-t border-slate-100">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <i data-lucide="clipboard-check" class="w-3.5 h-3.5 text-emerald-600"></i> Detailed Line-by-Line Production Audit
+              </h3>
+              <p class="text-[11px] text-slate-400">Exact log of every line worked, output meters, and finished vs pending status</p>
+            </div>
+            <span class="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg" id="mgrLineCountBadge">0 Lines</span>
+          </div>
+          <div id="mgrLinesCardsMobile" class="md:hidden space-y-2"></div>
+          <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th class="py-2 px-3">Date</th>
+                  <th class="py-2 px-3">Line Number</th>
+                  <th class="py-2 px-3">Working Team Members</th>
+                  <th class="py-2 px-3 text-right">Meters Produced</th>
+                  <th class="py-2 px-3 text-center">Work Status</th>
+                  <th class="py-2 px-3 text-right">Shift Total</th>
+                  <th class="py-2 px-3 text-center">Toggle Status</th>
+                </tr>
+              </thead>
+              <tbody id="mgrLinesTableBody" class="divide-y divide-slate-100 text-xs font-medium"></tbody>
+            </table>
+          </div>
+          <div id="mgrEmpty" class="hidden text-center py-10">
+            <p class="text-xs text-slate-400 font-semibold">No production lines found for the selected manager filter criteria.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: REPORTS & MEMBER SALARY -->
+    <section id="view-reports" class="tab-view hidden space-y-5 animate-fade-in">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
+        <div class="pb-3 border-b border-slate-100 space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <i data-lucide="wallet" class="w-4 h-4 text-brand-600"></i> Individual Member Salary Details (Equal Split)
+              </h2>
+              <p class="text-xs text-slate-500">Calculate date-to-date or monthly salary per person based on equal team split</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="exportReportsToExcel()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Report
+              </button>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-2">
+            <div class="sm:col-span-3">
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">From Date</label>
+              <input type="date" id="reportFromDate" onchange="runDetailedReports()"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800">
+            </div>
+            <div class="sm:col-span-3">
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">To Date</label>
+              <input type="date" id="reportToDate" onchange="runDetailedReports()"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800">
+            </div>
+            <div class="sm:col-span-3">
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Filter by Member</label>
+              <select id="reportMemberFilter" onchange="runDetailedReports()"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800">
+                <option value="ALL">All Team Members</option>
+              </select>
+            </div>
+            <div class="sm:col-span-3 flex items-end gap-1 pb-0.5">
+              <button onclick="setReportRangePreset('thisMonth')" class="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition">This Month</button>
+              <button onclick="setReportRangePreset('last30')"    class="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition">Last 30D</button>
+              <button onclick="setReportRangePreset('today')"     class="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition">Today</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Team Payout</span>
+            <div class="text-xl sm:text-2xl font-extrabold text-emerald-600 mt-0.5" id="repTotalCost">₹0</div>
+            <span class="text-[10px] text-slate-500 font-medium">Selected period</span>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Lines Completed</span>
+            <div class="text-xl sm:text-2xl font-extrabold text-brand-600 mt-0.5" id="repTotalLines">0</div>
+            <span class="text-[10px] text-slate-500 font-medium">Production lines</span>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Meters</span>
+            <div class="text-xl sm:text-2xl font-extrabold text-blue-600 mt-0.5" id="repTotalMeters">0 m</div>
+            <span class="text-[10px] text-slate-500 font-medium">Total fabric output</span>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Active Operators</span>
+            <div class="text-xl sm:text-2xl font-extrabold text-purple-600 mt-0.5" id="repWorkersCount">0</div>
+            <span class="text-[10px] text-slate-500 font-medium">Received salary share</span>
+          </div>
+        </div>
+
+        <div class="space-y-3 pt-2">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="award" class="w-3.5 h-3.5 text-brand-600"></i> Individual Member Salary Details (Equal Split)
+            </h3>
+            <span class="text-[11px] text-slate-400" id="repDateLabel">Showing report</span>
+          </div>
+          <div id="reportListMobile" class="md:hidden space-y-2.5"></div>
+          <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th class="py-2.5 px-3">Team Member</th>
+                  <th class="py-2.5 px-3 text-center">Shifts Worked</th>
+                  <th class="py-2.5 px-3 text-center">Lines Operated</th>
+                  <th class="py-2.5 px-3 text-right">Total Meters</th>
+                  <th class="py-2.5 px-3 text-right">Net Earned Salary (₹)</th>
+                  <th class="py-2.5 px-3 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="reportTableBody" class="divide-y divide-slate-100 text-xs font-medium"></tbody>
+            </table>
+          </div>
+          <div id="reportEmpty" class="hidden text-center py-10">
+            <p class="text-xs text-slate-400">No records found for the selected date range and member.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: TEAM MEMBERS MANAGEMENT -->
+    <section id="view-members" class="tab-view hidden space-y-4 animate-fade-in">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="users" class="w-4 h-4 text-brand-600"></i> Team Members Management
+            </h2>
+            <p class="text-xs text-slate-500">Register operators so they appear as tickable options in daily work entry</p>
+          </div>
+          <button onclick="openMemberModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition shadow-xs">
+            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Add Member
+          </button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-4" id="membersGrid"></div>
+        <div id="membersEmpty" class="hidden text-center py-10">
+          <p class="text-xs font-semibold text-slate-400">No team members registered yet. Click &quot;Add Member&quot; above!</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== MOBILE BOTTOM NAVIGATION BAR ==================== -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 px-1 py-1.5 flex items-center justify-around shadow-lg">
+    <button onclick="switchTab('entry')"   id="mobTab-entry"   class="hidden flex-col items-center gap-0.5 px-2 py-1 text-slate-400 hover:text-slate-700 transition">
+      <i data-lucide="file-plus-2" class="w-4.5 h-4.5"></i>
+      <span class="text-[9px] font-bold">Entry</span>
+    </button>
+    <button onclick="switchTab('records')" id="mobTab-records" class="hidden flex-col items-center gap-0.5 px-2 py-1 text-slate-400 hover:text-slate-700 transition">
+      <i data-lucide="calendar" class="w-4.5 h-4.5"></i>
+      <span class="text-[9px] font-semibold">Records</span>
+    </button>
+    <button onclick="switchTab('manager')" id="mobTab-manager" class="hidden flex-col items-center gap-0.5 px-2 py-1 text-slate-400 hover:text-slate-700 transition">
+      <i data-lucide="briefcase" class="w-4.5 h-4.5 text-indigo-500"></i>
+      <span class="text-[9px] font-bold text-indigo-600">Manager</span>
+    </button>
+    <button onclick="switchTab('reports')" id="mobTab-reports" class="hidden flex-col items-center gap-0.5 px-2 py-1 text-slate-400 hover:text-slate-700 transition">
+      <i data-lucide="wallet" class="w-4.5 h-4.5"></i>
+      <span class="text-[9px] font-semibold">Salary</span>
+    </button>
+    <button onclick="switchTab('members')" id="mobTab-members" class="hidden flex-col items-center gap-0.5 px-2 py-1 text-slate-400 hover:text-slate-700 transition">
+      <i data-lucide="users" class="w-4.5 h-4.5"></i>
+      <span class="text-[9px] font-semibold">Team</span>
+    </button>
+  </nav>
+
+  <!-- ==================== MODAL: ADMIN LOGIN ==================== -->
+  <div id="loginModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xs w-full p-5 shadow-2xl border border-slate-200 animate-fade-in space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="shield-check" class="w-4 h-4 text-brand-600"></i> Admin / Supervisor Login
+        </h3>
+        <button onclick="closeLoginModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <form onsubmit="handleLoginSubmit(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Enter Admin PIN</label>
+          <input type="password" id="inputLoginPin" inputmode="numeric" placeholder="Default: 1234" required
+            class="w-full p-3 text-center text-lg tracking-widest font-bold bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+          <span class="text-[10px] text-slate-400 block mt-1 text-center">Default factory PIN is <strong>1234</strong></span>
+        </div>
+        <div class="pt-2 flex gap-2">
+          <button type="button" onclick="closeLoginModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold shadow-xs">Unlock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: MEMBER SHIFTS BREAKDOWN & PAYSLIP ==================== -->
+  <div id="memberShiftsModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 animate-fade-in space-y-4 my-auto">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5" id="memberShiftsTitle">
+            <i data-lucide="file-text" class="w-4 h-4 text-brand-600"></i> Member Salary Statement
+          </h3>
+          <p class="text-[11px] text-slate-500" id="memberShiftsSubtitle">Itemized shift breakdown and equal split shares</p>
+        </div>
+        <button onclick="closeMemberShiftsModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div id="memberShiftsContainer" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
+      <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+        <div>
+          <span class="text-[10px] text-slate-400 block font-semibold">Net Payable to Member</span>
+          <span class="text-base font-extrabold text-emerald-600" id="memberModalTotalSalary">₹0</span>
+        </div>
+        <div class="text-right">
+          <span class="text-[10px] text-slate-400 block font-semibold">Total Shifts</span>
+          <span class="text-xs font-bold text-slate-700" id="memberModalTotalShifts">0 shifts</span>
+        </div>
+      </div>
+      <div class="pt-1 flex items-center gap-2">
+        <button onclick="copyMemberReportText()" id="copyMemberReportBtn"
+          class="flex-1 py-2.5 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy Statement
+        </button>
+        <button onclick="shareMemberWhatsApp()"
+          class="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition flex items-center justify-center gap-1.5">
+          <i data-lucide="send" class="w-3.5 h-3.5"></i> Send on WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: EDIT PRODUCTION ENTRY ==================== -->
+  <div id="editEntryModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 animate-fade-in space-y-4 my-auto">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="edit-3" class="w-4 h-4 text-brand-600"></i> Edit Production Record
+          </h3>
+          <p class="text-[11px] text-slate-400" id="editEntrySubtitle">Modify team members, lines, meters, and status</p>
+        </div>
+        <button onclick="closeEditModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <form id="editForm" onsubmit="handleSaveEditedEntry(event)" class="space-y-3.5 text-xs">
+        <input type="hidden" id="editEntryId">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div>
+            <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Date</label>
+            <input type="date" id="editEntryDate" required class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Working Team Members</label>
+            <input type="text" id="editMemberNames" required placeholder="e.g. Rajesh Kumar, Priya Sharma"
+              class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold">
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="font-bold text-slate-700 uppercase tracking-wider">Lines &amp; Output</label>
+            <button type="button" onclick="addEditLine()" class="text-brand-600 hover:text-brand-700 font-bold text-[11px] flex items-center gap-1">
+              <i data-lucide="plus" class="w-3 h-3"></i> + Add Line
+            </button>
+          </div>
+          <div id="editLinesContainer" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+          <div>
+            <span class="text-[10px] text-slate-400 block font-semibold">Total Shift Salary</span>
+            <span class="text-sm font-extrabold text-emerald-600" id="editPreviewSalary">₹0</span>
+          </div>
+          <span class="text-[10px] font-bold text-slate-500" id="editPreviewTier">Tier Rate</span>
+        </div>
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeEditModal()" class="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>
+          <button type="submit" id="saveEditBtn" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold shadow-xs">Update Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: ADD / EDIT TEAM MEMBER ==================== -->
+  <div id="memberModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 animate-fade-in space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2" id="memberModalTitle">
+          <i data-lucide="user-plus" class="w-4 h-4 text-brand-600"></i> Add Team Member
+        </h3>
+        <button onclick="closeMemberModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <form id="memberForm" onsubmit="handleSaveMember(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="inputMemberId">
+        <div>
+          <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Full Name <span class="text-rose-500">*</span></label>
+          <input type="text" id="inputMemberName" required placeholder="e.g. Murugan / Rajesh"
+            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Phone Number (Optional)</label>
+          <input type="tel" id="inputMemberPhone" placeholder="For WhatsApp payslip sending"
+            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Role / Designation</label>
+          <input type="text" id="inputMemberRole" placeholder="e.g. Line Operator" value="Line Operator"
+            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+        </div>
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeMemberModal()" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>
+          <button type="submit" id="saveMemberBtn" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold shadow-xs">Save Member</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: SUPABASE CONFIGURATION ==================== -->
+  <div id="supabaseModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 animate-fade-in space-y-3.5">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="database" class="w-4 h-4 text-brand-600"></i> Database Settings
+        </h3>
+        <button onclick="closeSupabaseModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="space-y-2.5 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Supabase URL</label>
+          <input type="text" id="cfgUrl" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Supabase Anon Key</label>
+          <input type="password" id="cfgKey" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800">
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button onclick="closeSupabaseModal()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold">Cancel</button>
+        <button onclick="saveSupabaseConfig()" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TOAST NOTIFICATIONS ==================== -->
+  <div id="toastBox" class="fixed bottom-16 md:bottom-6 right-3 left-3 sm:left-auto sm:right-6 z-50 flex flex-col gap-2 pointer-events-none sm:max-w-sm"></div>
+
+  <!-- ============================================================================ -->
+  <!-- JAVASCRIPT MODULES — Load order matters!                                     -->
+  <!-- Foundation: config → state → utils                                           -->
+  <!-- Services: supabase (uses sbClient from state)                                -->
+  <!-- Components: toast → auth → tabs → members → entry → records → manager       -->
+  <!--             → reports → excel → edit                                         -->
+  <!-- Bootstrap: app.js (DOMContentLoaded)                                         -->
+  <!-- ============================================================================ -->
+  <script src="js/config.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/services/supabase.js"></script>
+  <script src="js/components/toast.js"></script>
+  <script src="js/components/auth.js"></script>
+  <script src="js/components/tabs.js"></script>
+  <script src="js/components/members.js"></script>
+  <script src="js/components/entry.js"></script>
+  <script src="js/components/records.js"></script>
+  <script src="js/components/manager.js"></script>
+  <script src="js/components/reports.js"></script>
+  <script src="js/components/excel.js"></script>
+  <script src="js/components/edit.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
