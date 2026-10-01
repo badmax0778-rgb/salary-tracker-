@@ -355,6 +355,14 @@ async function handleSaveTeam(e) {
 
   if (!name) return;
   const btn = document.getElementById('saveTeamBtn');
+
+  // Prevent duplicate names
+  const existingTeam = appState.teams.find(t => t.name.toLowerCase() === name.toLowerCase() && t.id !== id);
+  if (existingTeam) {
+    showToast(`Team "${name}" already exists!`, 'error');
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = 'Saving...';
 

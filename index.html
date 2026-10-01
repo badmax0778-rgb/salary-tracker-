@@ -222,7 +222,7 @@
             <!-- Info bar -->
             <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-2 text-[11px] text-slate-500">
               <i data-lucide="info" class="w-4 h-4 shrink-0 text-slate-400"></i>
-              <span>Admins can change credentials via Settings. Default: Admin PIN <strong class="text-rose-600">1234</strong> · Manager <strong class="text-indigo-600">manager / manager123</strong></span>
+              <span>Admins can change credentials via Settings.</span>
             </div>
           </div>
 
@@ -812,9 +812,8 @@
       <form onsubmit="handleLoginSubmit(event)" class="space-y-3 text-xs">
         <div>
           <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Enter Admin PIN</label>
-          <input type="password" id="inputLoginPin" inputmode="numeric" placeholder="Default: 1234" required
+          <input type="password" id="inputLoginPin" inputmode="numeric" placeholder="Enter PIN" required
             class="w-full p-3 text-center text-lg tracking-widest font-bold bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
-          <span class="text-[10px] text-slate-400 block mt-1 text-center">Default factory PIN is <strong>1234</strong></span>
         </div>
         <div class="pt-2 flex gap-2">
           <button type="button" onclick="closeLoginModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>

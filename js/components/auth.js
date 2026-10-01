@@ -36,14 +36,13 @@ function selectLoginRole(role) {
       <div>
         <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Admin PIN</label>
         <div class="relative">
-          <input type="password" id="loginInput1" placeholder="Enter Admin PIN (Default: 1234)" maxlength="8"
+          <input type="password" id="loginInput1" placeholder="Enter Admin PIN" maxlength="8"
             class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white transition pr-12">
           <button type="button" onclick="toggleLoginInputVisibility('loginInput1')"
             class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
             <i data-lucide="eye" class="w-4 h-4" id="loginEye1"></i>
           </button>
         </div>
-        <p class="text-[11px] text-slate-400 mt-1">Default PIN: <strong class="text-rose-600">1234</strong></p>
       </div>
       <button type="submit" class="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2">
         <i data-lucide="shield-check" class="w-4 h-4"></i> Login as Admin
@@ -53,20 +52,19 @@ function selectLoginRole(role) {
     credForm.innerHTML = `
       <div>
         <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Username</label>
-        <input type="text" id="loginInput1" placeholder="Username (Default: manager)"
+        <input type="text" id="loginInput1" placeholder="Username"
           class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
       </div>
       <div>
         <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Password</label>
         <div class="relative">
-          <input type="password" id="loginInput2" placeholder="Password (Default: manager123)"
+          <input type="password" id="loginInput2" placeholder="Password"
             class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition pr-12">
           <button type="button" onclick="toggleLoginInputVisibility('loginInput2')"
             class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
             <i data-lucide="eye" class="w-4 h-4" id="loginEye2"></i>
           </button>
         </div>
-        <p class="text-[11px] text-slate-400 mt-1">Default: <strong class="text-indigo-600">manager / manager123</strong></p>
       </div>
       <button type="submit" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2">
         <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Login as Manager
