@@ -33,8 +33,30 @@ function initSupabase() {
     updateStatusIndicator(false, 'Local Mode');
   }
 
+  fetchTeams();
   fetchMembers();
   fetchEntries();
+}
+
+async function fetchTeams() {
+  try {
+    if (isSupabaseLive && sbClient) {
+      const { data, error } = await sbClient
+        .from('teams')
+        .select('*')
+        .order('name');
+      if (error) throw error;
+      appState.teams = data || [];
+    } else {
+      const raw = localStorage.getItem('protrack_teams');
+      appState.teams = raw ? JSON.parse(raw) : [
+        { id: 't1', name: 'Morning Shift A', is_active: true },
+        { id: 't2', name: 'Night Shift B', is_active: true }
+      ];
+    }
+  } catch (err) {
+    console.error('Fetch teams error:', err);
+  }
 }
 
 async function fetchMembers() {
@@ -58,9 +80,10 @@ async function fetchMembers() {
   } catch (err) {
     console.error('Fetch members error:', err);
   } finally {
-    renderTeamChecklist();
-    renderReportMemberFilter();
-    renderMembersTab();
+    if (typeof renderTeamSetup === 'function') renderTeamSetup(); // New teams UI
+    if (typeof renderTeamChecklist === 'function') renderTeamChecklist();
+    if (typeof renderReportMemberFilter === 'function') renderReportMemberFilter();
+    if (typeof renderMembersTab === 'function') renderMembersTab();
   }
 }
 
@@ -78,6 +101,8 @@ async function fetchEntries() {
           entry_date,
           member_name,
           team_size,
+          team_id,
+          teams ( name ),
           share_per_member,
           total_lines,
           total_meters,
@@ -103,10 +128,17 @@ async function fetchEntries() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      appState.entries = data || [];
+      appState.entries = (data || []).map(row => ({
+        ...row,
+        team_name: row.teams?.name || 'No Team'
+      }));
     } else {
       const raw = localStorage.getItem('protrack_entries');
-      appState.entries = raw ? JSON.parse(raw) : [];
+      const parsed = raw ? JSON.parse(raw) : [];
+      appState.entries = parsed.map(e => {
+        const team = appState.teams.find(t => t.id === e.team_id);
+        return { ...e, team_name: team ? team.name : 'No Team' };
+      });
     }
   } catch (err) {
     console.error('Fetch entries error:', err);

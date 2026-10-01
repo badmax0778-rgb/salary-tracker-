@@ -15,6 +15,7 @@ function exportToExcel() {
     const share      = parseFloat(e.share_per_member) || Math.round(shiftTotal / teamSize);
     return {
       'Shift Date': e.entry_date,
+      'Work Group / Team': e.team_name || 'No Team',
       'Team Members': e.member_name,
       'Team Size': teamSize,
       'Total Lines': parseInt(e.total_lines) || 0,
@@ -32,6 +33,7 @@ function exportToExcel() {
     (e.production_line_items || []).forEach(l => {
       lineRows.push({
         'Date': e.entry_date,
+        'Work Group / Team': e.team_name || 'No Team',
         'Team Members': e.member_name,
         'Line Number': l.line_number,
         'Production Meters': parseFloat(l.meters) || 0,
@@ -72,6 +74,7 @@ function exportReportsToExcel() {
     const share      = parseFloat(e.share_per_member) || Math.round(shiftTotal / teamSize);
     return {
       'Shift Date': e.entry_date,
+      'Work Group / Team': e.team_name || 'No Team',
       'Team Members': e.member_name,
       'Team Size': teamSize,
       'Total Lines Count': parseInt(e.total_lines) || 0,
@@ -89,6 +92,7 @@ function exportReportsToExcel() {
     (e.production_line_items || []).forEach(l => {
       lineRows.push({
         'Date': e.entry_date,
+        'Work Group / Team': e.team_name || 'No Team',
         'Team Members': e.member_name,
         'Line Number': l.line_number,
         'Production Meters': parseFloat(l.meters) || 0,

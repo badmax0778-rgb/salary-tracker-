@@ -249,3 +249,158 @@ async function deleteMember(memberId) {
     showToast('Could not delete member: ' + err.message, 'error');
   }
 }
+
+// --- Team Names / Work Groups Management ---
+
+function renderTeamSetup() {
+  const grid = document.getElementById('teamsGrid');
+  const empty = document.getElementById('teamsEmpty');
+  const dropdown = document.getElementById('entryTeam');
+  const reportFilter = document.getElementById('reportTeamFilter');
+
+  if (!appState.teams) appState.teams = [];
+
+  // 1. Update Grid in Setup Tab
+  if (grid && empty) {
+    if (appState.teams.length === 0) {
+      grid.innerHTML = '';
+      empty.classList.remove('hidden');
+    } else {
+      empty.classList.add('hidden');
+      grid.innerHTML = '';
+      appState.teams.forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between hover:border-slate-300 transition';
+        card.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs">
+              <i data-lucide="building-2" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-slate-800">${escapeHtml(t.name)}</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="openTeamModal('${t.id}')" title="Edit Team" class="p-1 text-slate-400 hover:text-indigo-600 rounded-lg">
+              <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="deleteTeam('${t.id}')" class="p-1 text-slate-400 hover:text-rose-600 rounded-lg" title="Delete Team">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+  }
+
+  // 2. Update Entry Dropdown
+  if (dropdown) {
+    dropdown.innerHTML = '<option value="">-- Select Team Name --</option>';
+    appState.teams.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.name;
+      dropdown.appendChild(opt);
+    });
+  }
+
+  // 3. Update Report Filter
+  if (reportFilter) {
+    reportFilter.innerHTML = '<option value="ALL">All Teams</option>';
+    appState.teams.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.name;
+      opt.textContent = t.name;
+      reportFilter.appendChild(opt);
+    });
+  }
+
+  if (window.lucide) lucide.createIcons();
+}
+
+function openTeamModal(teamId = null) {
+  const modal = document.getElementById('teamModal');
+  const title = document.getElementById('teamModalTitle');
+  const inputId = document.getElementById('inputTeamId');
+  const inputName = document.getElementById('inputTeamName');
+
+  if (teamId) {
+    const t = appState.teams.find(x => x.id === teamId);
+    if (t) {
+      title.innerHTML = `<i data-lucide="edit-2" class="w-4 h-4 text-indigo-600"></i> Edit Team`;
+      inputId.value = t.id;
+      inputName.value = t.name;
+    }
+  } else {
+    title.innerHTML = `<i data-lucide="plus" class="w-4 h-4 text-indigo-600"></i> Add Team`;
+    inputId.value = '';
+    inputName.value = '';
+  }
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  if (window.lucide) lucide.createIcons();
+}
+
+function closeTeamModal() {
+  document.getElementById('teamModal').classList.add('hidden');
+  document.getElementById('teamModal').classList.remove('flex');
+}
+
+async function handleSaveTeam(e) {
+  e.preventDefault();
+  const id = document.getElementById('inputTeamId').value;
+  const name = document.getElementById('inputTeamName').value.trim();
+
+  if (!name) return;
+  const btn = document.getElementById('saveTeamBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    if (isSupabaseLive && sbClient) {
+      if (id) {
+        const { error } = await sbClient.from('teams').update({ name }).eq('id', id);
+        if (error) throw error;
+        const ex = appState.teams.find(t => t.id === id);
+        if (ex) ex.name = name;
+      } else {
+        const { data, error } = await sbClient.from('teams').insert([{ name, is_active: true }]).select().single();
+        if (error) throw error;
+        appState.teams.push(data);
+      }
+    } else {
+      if (id) {
+        const ex = appState.teams.find(t => t.id === id);
+        if (ex) ex.name = name;
+      } else {
+        appState.teams.push({ id: generateId(), name, is_active: true });
+      }
+      localStorage.setItem('protrack_teams', JSON.stringify(appState.teams));
+    }
+    showToast('Team saved successfully!', 'success');
+    closeTeamModal();
+    renderTeamSetup();
+  } catch (err) {
+    showToast('Error saving team: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Team';
+  }
+}
+
+async function deleteTeam(teamId) {
+  if (!confirm('Delete this team name? This might break existing records using it.')) return;
+  try {
+    if (isSupabaseLive && sbClient) {
+      await sbClient.from('teams').delete().eq('id', teamId);
+    }
+    appState.teams = appState.teams.filter(x => x.id !== teamId);
+    localStorage.setItem('protrack_teams', JSON.stringify(appState.teams));
+    renderTeamSetup();
+    showToast('Team deleted', 'success');
+  } catch (err) {
+    showToast('Could not delete team: ' + err.message, 'error');
+  }
+}

@@ -194,6 +194,12 @@ async function handleSaveEntry(e) {
     return;
   }
 
+  const entryTeamId = document.getElementById('entryTeam').value;
+  if (!entryTeamId) {
+    showToast('⚠️ Please select a Team Name!', 'error');
+    return;
+  }
+
   const entryDate  = document.getElementById('entryDate').value;
   const totalLines = appState.currentLines.length;
   const ratePerLine = computeActiveRate(totalLines);
@@ -217,6 +223,7 @@ async function handleSaveEntry(e) {
 
   const masterRecord = {
     member_id: selectedMembersList[0].id,
+    team_id: entryTeamId,
     entry_date: entryDate,
     member_name: combinedMemberNames,
     team_size: teamSize,

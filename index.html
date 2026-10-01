@@ -278,6 +278,14 @@
               <input type="date" id="entryDate" required
                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
+            <!-- Team Selection -->
+            <div>
+              <label for="entryTeam" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Work Group / Team Name <span class="text-rose-500">*</span></label>
+              <select id="entryTeam" required
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <option value="">-- Select Team Name --</option>
+              </select>
+            </div>
 
             <!-- Team Members Checklist -->
             <div class="p-3.5 bg-brand-50/70 rounded-xl border border-brand-200 space-y-2.5">
@@ -636,17 +644,24 @@
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-2">
-            <div class="sm:col-span-3">
+            <div class="sm:col-span-2">
               <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">From Date</label>
               <input type="date" id="reportFromDate" onchange="runDetailedReports()"
                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800">
             </div>
-            <div class="sm:col-span-3">
+            <div class="sm:col-span-2">
               <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">To Date</label>
               <input type="date" id="reportToDate" onchange="runDetailedReports()"
                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800">
             </div>
             <div class="sm:col-span-3">
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Filter by Team</label>
+              <select id="reportTeamFilter" onchange="runDetailedReports()"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800">
+                <option value="ALL">All Teams</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
               <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Filter by Member</label>
               <select id="reportMemberFilter" onchange="runDetailedReports()"
                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800">
@@ -654,8 +669,8 @@
               </select>
             </div>
             <div class="sm:col-span-3 flex items-end gap-1 pb-0.5">
-              <button onclick="setReportRangePreset('thisMonth')" class="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition">This Month</button>
-              <button onclick="setReportRangePreset('last30')"    class="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition">Last 30D</button>
+              <button onclick="setReportRangePreset('thisMonth')" class="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition">Month</button>
+              <button onclick="setReportRangePreset('last30')"    class="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition">30D</button>
               <button onclick="setReportRangePreset('today')"     class="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition">Today</button>
             </div>
           </div>
@@ -715,21 +730,43 @@
     </section>
 
     <!-- TAB 5: TEAM MEMBERS MANAGEMENT -->
-    <section id="view-members" class="tab-view hidden space-y-4 animate-fade-in">
+    <section id="view-members" class="tab-view hidden space-y-6 animate-fade-in">
+      
+      <!-- Teams / Work Groups Section -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
         <div class="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
             <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-              <i data-lucide="users" class="w-4 h-4 text-brand-600"></i> Team Members Management
+              <i data-lucide="building-2" class="w-4 h-4 text-indigo-600"></i> Work Groups / Team Names
+            </h2>
+            <p class="text-xs text-slate-500">Create team labels that operators can select during daily entry</p>
+          </div>
+          <button data-perm="canManageMembers" onclick="openTeamModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Team
+          </button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-4" id="teamsGrid"></div>
+        <div id="teamsEmpty" class="hidden text-center py-6">
+          <i data-lucide="users-2" class="w-8 h-8 text-slate-300 mx-auto mb-2"></i>
+          <p class="text-sm font-bold text-slate-400">No teams created yet.</p>
+        </div>
+      </div>
+
+      <!-- Individual Operators Section -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="users" class="w-4 h-4 text-brand-600"></i> Individual Operators
             </h2>
             <p class="text-xs text-slate-500">Register operators so they appear as tickable options in daily work entry</p>
           </div>
-          <button onclick="openMemberModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition shadow-xs">
-            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Add Member
+          <button data-perm="canManageMembers" onclick="openMemberModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition shadow-xs">
+            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Add Operator
           </button>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-4" id="membersGrid"></div>
-        <div id="membersEmpty" class="hidden text-center py-10">
+        <div id="membersEmpty" class="hidden text-center py-6">
           <p class="text-xs font-semibold text-slate-400">No team members registered yet. Click &quot;Add Member&quot; above!</p>
         </div>
       </div>
@@ -907,6 +944,32 @@
         <div class="pt-2 flex items-center justify-end gap-2">
           <button type="button" onclick="closeMemberModal()" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>
           <button type="submit" id="saveMemberBtn" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold shadow-xs">Save Member</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: ADD/EDIT TEAM NAME ==================== -->
+  <div id="teamModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 animate-fade-in space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2" id="teamModalTitle">
+          <i data-lucide="building-2" class="w-4 h-4 text-indigo-600"></i> Add Team
+        </h3>
+        <button onclick="closeTeamModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <form id="teamForm" onsubmit="handleSaveTeam(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="inputTeamId">
+        <div>
+          <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Team Name <span class="text-rose-500">*</span></label>
+          <input type="text" id="inputTeamName" required placeholder="e.g. Night Shift A"
+            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeTeamModal()" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>
+          <button type="submit" id="saveTeamBtn" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs">Save Team</button>
         </div>
       </form>
     </div>

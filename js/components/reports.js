@@ -24,6 +24,7 @@ function setReportRangePreset(preset) {
 function runDetailedReports() {
   const fromDate     = document.getElementById('reportFromDate').value;
   const toDate       = document.getElementById('reportToDate').value;
+  const filterTeam   = document.getElementById('reportTeamFilter')?.value || 'ALL';
   const filterMember = document.getElementById('reportMemberFilter').value;
 
   document.getElementById('repDateLabel').textContent = `Period: ${formatDate(fromDate)} to ${formatDate(toDate)}`;
@@ -32,6 +33,7 @@ function runDetailedReports() {
     if (!e.entry_date) return false;
     if (fromDate && e.entry_date < fromDate) return false;
     if (toDate   && e.entry_date > toDate)   return false;
+    if (filterTeam !== 'ALL' && e.team_name !== filterTeam) return false;
     return true;
   });
 

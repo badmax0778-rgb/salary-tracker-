@@ -65,6 +65,7 @@ function renderRecordsView() {
         <div>
           <div class="flex items-center gap-1.5 flex-wrap">
             <span class="font-extrabold text-slate-800 text-xs">${escapeHtml(entry.member_name)}</span>
+            <span class="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700">${escapeHtml(entry.team_name || 'No Team')}</span>
             <span class="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-brand-100 text-brand-700">${teamSize} person team</span>
           </div>
           <span class="text-[10px] text-slate-400 block mt-0.5">${formatDate(entry.entry_date)}</span>
@@ -127,6 +128,7 @@ function renderRecordsView() {
       </td>
       <td class="py-2.5 px-3 text-slate-800 whitespace-nowrap">${formatDate(entry.entry_date)}</td>
       <td class="py-2.5 px-3 font-bold text-slate-800">
+        <span class="inline-block px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[9px] uppercase tracking-wider mb-0.5">${escapeHtml(entry.team_name || 'No Team')}</span><br>
         ${escapeHtml(entry.member_name)}
         <span class="text-[10px] text-slate-400 block font-normal">${teamSize} person team split</span>
       </td>

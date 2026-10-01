@@ -17,6 +17,7 @@ let authState = {
 // Application state
 let appState = {
   activeTab: 'entry',
+  teams: [],
   members: [],
   selectedMemberIds: new Set(),
   currentLines: [],

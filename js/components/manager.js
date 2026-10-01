@@ -41,8 +41,8 @@ function runManagerAnalytics() {
 
   rangeEntries.forEach(entry => {
     totalWagesCost += parseFloat(entry.total_amount) || 0;
-    const teamKey    = entry.member_name || 'Individual Operator';
-    const teamSize   = parseInt(entry.team_size) || (teamKey.includes(',') ? teamKey.split(',').length : 1);
+    const teamKey    = entry.team_name !== 'No Team' ? entry.team_name : (entry.member_name || 'Individual Operator');
+    const teamSize   = parseInt(entry.team_size) || (entry.member_name && entry.member_name.includes(',') ? entry.member_name.split(',').length : 1);
     const shiftAmount = parseFloat(entry.total_amount) || 0;
     const sharePerMember = parseFloat(entry.share_per_member) || Math.round(shiftAmount / teamSize);
 
